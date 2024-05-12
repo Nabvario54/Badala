@@ -1,32 +1,47 @@
-// This function is the endpoint's request handler.
-exports = function({ query, headers, body}, response) {
-    // Data can be extracted from the request as follows:
+exports = async function(payload, response) {
+    const mongodb = context.services.get("mongodb-atlas");
+    const usersCollection = mongodb.db("Badala").collection("Users");
 
-    // Query params, e.g. '?arg1=hello&arg2=world' => {arg1: "hello", arg2: "world"}
-    const {arg1, arg2} = query;
+    let loginData;
+    try {
+        loginData = EJSON.parse(payload.body.text());
+    } catch (e) {
+        response.setStatusCode(400);
+        return { error: "Invalid JSON data provided." };
+    }
 
-    // Headers, e.g. {"Content-Type": ["application/json"]}
-    const contentTypes = headers["Content-Type"];
+    // Basic validation
+    if (!loginData.email || !loginData.password) {
+        response.setStatusCode(400);
+        return { error: "Request must include both email and password." };
+    }
 
-    // Raw request body (if the client sent one).
-    // This is a binary object that can be accessed as a string using .text()
-    const reqBody = body;
+    try {
+        // Retrieve user document
+        const userDocument = await usersCollection.findOne({ email: loginData.email });
+        if (!userDocument) {
+            response.setStatusCode(404);
+            return { error: "User not found." };
+        }
 
-    console.log("arg1, arg2: ", arg1, arg2);
-    console.log("Content-Type:", JSON.stringify(contentTypes));
-    console.log("Request body:", reqBody);
+        // Assuming bcrypt hashing is handled externally:
+        // Check if bcrypt service is setup correctly (this part is pseudo since Realm does not support bcrypt natively)
+        const bcrypt = context.services.get("bcrypt"); // This line is conceptual unless you have configured a custom service
 
-    // You can use 'context' to interact with other application features.
-    // Accessing a value:
-    // var x = context.values.get("value_name");
+        // Verify password - this would ideally be a call to an external service if bcrypt is not configured within Realm
+        const passwordIsValid = await bcrypt.compare(loginData.password, userDocument.password);
+        
+        if (!passwordIsValid) {
+            response.setStatusCode(401);
+            return { error: "Invalid credentials." };
+        }
 
-    // Querying a mongodb service:
-    // const doc = context.services.get("mongodb-atlas").db("dbname").collection("coll_name").findOne();
+        // Assuming successful login
+        response.setStatusCode(200);
+        return { message: "Login successful!", userId: userDocument._id };
 
-    // Calling a function:
-    // const result = context.functions.execute("function_name", arg1, arg2);
-
-    // The return value of the function is sent as the response back to the client
-    // when the "Respond with Result" setting is set.
-    return  "Hello World!";
+    } catch (e) {
+        response.setStatusCode(500);
+        return { error: "Internal server error: " + e.message };
+    }
 };
