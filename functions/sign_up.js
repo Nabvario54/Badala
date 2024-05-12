@@ -1,32 +1,45 @@
-// This function is the endpoint's request handler.
-exports = function({ query, headers, body}, response) {
-    // Data can be extracted from the request as follows:
+exports = async function(payload, response) {
+    const mongodb = context.services.get("mongodb-atlas");
+    const usersCollection = mongodb.db("yourDatabaseName").collection("users");
 
-    // Query params, e.g. '?arg1=hello&arg2=world' => {arg1: "hello", arg2: "world"}
-    const {arg1, arg2} = query;
+    const userData = EJSON.parse(payload.body.text());
 
-    // Headers, e.g. {"Content-Type": ["application/json"]}
-    const contentTypes = headers["Content-Type"];
+    // Basic validation
+    if (!userData.email || !userData.password) {
+        response.setStatusCode(400);
+        return { error: "Request must include an email and password." };
+    }
 
-    // Raw request body (if the client sent one).
-    // This is a binary object that can be accessed as a string using .text()
-    const reqBody = body;
+    // Check for existing user
+    const existingUser = await usersCollection.findOne({ email: userData.email });
+    if (existingUser) {
+        response.setStatusCode(409); // Conflict status
+        return { error: "User with the given email already exists." };
+    }
 
-    console.log("arg1, arg2: ", arg1, arg2);
-    console.log("Content-Type:", JSON.stringify(contentTypes));
-    console.log("Request body:", reqBody);
+    // Password hashing
+    const bcrypt = context.services.get("bcrypt");
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-    // You can use 'context' to interact with other application features.
-    // Accessing a value:
-    // var x = context.values.get("value_name");
+    // Prepare the user document to insert
+    const userDocument = {
+        ...userData,
+        password: hashedPassword,
+        createdAt: new Date(),
+        isActive: true
+    };
 
-    // Querying a mongodb service:
-    // const doc = context.services.get("mongodb-atlas").db("dbname").collection("coll_name").findOne();
-
-    // Calling a function:
-    // const result = context.functions.execute("function_name", arg1, arg2);
-
-    // The return value of the function is sent as the response back to the client
-    // when the "Respond with Result" setting is set.
-    return  "Hello World!";
+    try {
+        const insertResult = await usersCollection.insertOne(userDocument);
+        if (insertResult) {
+            response.setStatusCode(201);
+            return { message: "User created successfully", userId: insertResult.insertedId };
+        } else {
+            response.setStatusCode(500);
+            return { error: "Failed to create user." };
+        }
+    } catch (e) {
+        response.setStatusCode(500);
+        return { error: e.message || "Internal server error" };
+    }
 };
