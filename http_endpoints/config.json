@@ -3,7 +3,7 @@
         "http_method": "POST",
         "route": "/login",
         "function_name": "login",
-        "secret_name": "badala_secret",
+        "secret_name": "badala_secret_2",
         "validation_method": "SECRET_AS_QUERY_PARAM",
         "respond_result": true,
         "fetch_custom_user_data": false,
