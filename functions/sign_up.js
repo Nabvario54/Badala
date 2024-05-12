@@ -1,6 +1,6 @@
 exports = async function(payload, response) {
     const mongodb = context.services.get("mongodb-atlas");
-    const usersCollection = mongodb.db("Badala").collection("Users");
+    const usersCollection = mongodb.db("YourDatabaseName").collection("Users");
 
     let userData;
     try {
@@ -23,23 +23,22 @@ exports = async function(payload, response) {
         return { error: "User with the given email already exists." };
     }
 
-    // Password hashing using sha256
+    // Password hashing using SHA-256
+    const hashedPassword = utils.crypto.hash("sha256", userData.password);
+
+    // Prepare the user document to insert
+    const userDocument = {
+        ...userData,
+        password: hashedPassword,
+        createdAt: new Date(),
+        isActive: true
+    };
+
     try {
-        const hashedPassword = utils.crypto.hash(userData.password, 'sha256');
-
-        // Prepare the user document to insert
-        const userDocument = {
-            ...userData,
-            password: hashedPassword,
-            createdAt: new Date(),
-            isActive: true
-        };
-
-        // Insert the new user
         const insertResult = await usersCollection.insertOne(userDocument);
-        if (insertResult.insertedId) {
+        if (insertResult) {
             response.setStatusCode(201);
-            return { message: "User created successfully", userId: insertResult.insertedId.toString() };
+            return { message: "User created successfully", userId: insertResult.insertedId };
         } else {
             response.setStatusCode(500);
             return { error: "Failed to create user." };
