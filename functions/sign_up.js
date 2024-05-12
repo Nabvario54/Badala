@@ -23,18 +23,24 @@ exports = async function(payload, response) {
         return { error: "User with the given email already exists." };
     }
 
-    // Assuming password is already hashed if coming from a secure client-side or through an external service
-    const userDocument = {
-        ...userData,
-        createdAt: new Date(),
-        isActive: true
-    };
-
+    // Password hashing
     try {
+        // Utilizing MongoDB Realm's built-in crypto functions
+        const hashedPassword = utils.crypto.hash(userData.password, 'sha256');
+
+        // Prepare the user document to insert
+        const userDocument = {
+            ...userData,
+            password: hashedPassword,
+            createdAt: new Date(),
+            isActive: true
+        };
+
+        // Insert the new user
         const insertResult = await usersCollection.insertOne(userDocument);
-        if (insertResult) {
+        if (insertResult.insertedId) {
             response.setStatusCode(201);
-            return { message: "User created successfully", userId: insertResult.insertedId };
+            return { message: "User created successfully", userId: insertResult.insertedId.toString() };
         } else {
             response.setStatusCode(500);
             return { error: "Failed to create user." };
