@@ -1,1 +1,12 @@
-[]
+[
+    {
+        "name": "login",
+        "private": false,
+        "disable_arg_logs": true
+    },
+    {
+        "name": "sign_up",
+        "private": false,
+        "disable_arg_logs": true
+    }
+]
