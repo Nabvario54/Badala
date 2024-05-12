@@ -2,7 +2,13 @@ exports = async function(payload, response) {
     const mongodb = context.services.get("mongodb-atlas");
     const usersCollection = mongodb.db("Badala").collection("Users");
 
-    const userData = EJSON.parse(payload.body.text());
+    let userData;
+    try {
+        userData = EJSON.parse(payload.body.text());
+    } catch (e) {
+        response.setStatusCode(400);
+        return { error: "Invalid JSON data provided." };
+    }
 
     // Basic validation
     if (!userData.email || !userData.password) {
@@ -17,14 +23,9 @@ exports = async function(payload, response) {
         return { error: "User with the given email already exists." };
     }
 
-    // Password hashing
-    const bcrypt = context.services.get("bcrypt");
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-
-    // Prepare the user document to insert
+    // Assuming password is already hashed if coming from a secure client-side or through an external service
     const userDocument = {
         ...userData,
-        password: hashedPassword,
         createdAt: new Date(),
         isActive: true
     };
