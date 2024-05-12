@@ -1,6 +1,6 @@
 exports = async function(payload, response) {
     const mongodb = context.services.get("mongodb-atlas");
-    const usersCollection = mongodb.db("yourDatabaseName").collection("users");
+    const usersCollection = mongodb.db("Badala").collection("Users");
 
     const userData = EJSON.parse(payload.body.text());
 
