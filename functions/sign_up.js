@@ -23,9 +23,8 @@ exports = async function(payload, response) {
         return { error: "User with the given email already exists." };
     }
 
-    // Password hashing
+    // Password hashing using sha256
     try {
-        // Utilizing MongoDB Realm's built-in crypto functions
         const hashedPassword = utils.crypto.hash(userData.password, 'sha256');
 
         // Prepare the user document to insert
